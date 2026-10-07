@@ -67,11 +67,17 @@ const TRANSLATIONS = {
   "se connecter": "Connection"
 };
 
-// País de cada grupo
-const GROUP_COUNTRY = {
-  "Group 1": "Belgium",
-  "Group 2": "Portugal"
-};
+   // País de cada grupo
+   const GROUP_COUNTRY = {
+     "Group 1": "Belgium",
+     "Group 2": "Portugal"
+   };
+
+   // Tipo de organização de cada grupo
+   const GROUP_SECTOR = {
+     "Group 1": "Public Sector & Non-profit",
+     "Group 2": "Financial Services & Insurance"
+   };
 
 const KEYS = {
   group:    ["select your group", "votre groupe", "seu grupo"],
@@ -208,7 +214,7 @@ export default async function handler(req, res) {
             questionnaire,
             workshop: normalizeGroup(findText(f, KEYS.group)),
             country:  GROUP_COUNTRY[normalizeGroup(findText(f, KEYS.group))] || "Unknown",
-            sector:   tr(findText(f, KEYS.sector)) || "Unknown",
+            sector:   GROUP_SECTOR[normalizeGroup(findText(f, KEYS.group))] || "Unknown",
             age:      tr(findText(f, KEYS.age)) || "Unknown",
             role:     tr(findText(f, KEYS.role)) || "Unknown",
             concern:  tr(findText(f, KEYS.concern)) || "Unknown",
