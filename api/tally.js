@@ -66,7 +66,11 @@ const TRANSLATIONS = {
   "conexão": "Connection",
   "se connecter": "Connection"
 };
-
+// País de cada grupo
+const GROUP_COUNTRY = {
+  "Group 1": "Belgium",
+  "Group 2": "Portugal"
+};
 const KEYS = {
   group:    ["select your group", "votre groupe", "seu grupo"],
   country:  ["which region", "quelle région", "que região"],
@@ -201,7 +205,7 @@ export default async function handler(req, res) {
             type,
             questionnaire,
             workshop: normalizeGroup(findText(f, KEYS.group)),
-            country:  tr(findText(f, KEYS.country)) || "Unknown",
+            country:  GROUP_COUNTRY[normalizeGroup(findText(f, KEYS.group))] || "Unknown",
             sector:   tr(findText(f, KEYS.sector)) || "Unknown",
             age:      tr(findText(f, KEYS.age)) || "Unknown",
             role:     tr(findText(f, KEYS.role)) || "Unknown",
