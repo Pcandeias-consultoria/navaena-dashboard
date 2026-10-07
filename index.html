@@ -452,6 +452,16 @@ footer {
     </div>
   </div>
 
+  <div id="statements-area" class="content-hidden">
+    <div class="stats-grid" style="max-width: 260px; margin-left: auto; margin-right: auto;">
+      <div class="stat-tile">
+        <div class="stat-value" id="st-count">–</div>
+        <div class="stat-label">Submissions</div>
+      </div>
+    </div>
+    <div class="charts-section" id="statements-charts"></div>
+  </div>
+
   <div id="empty-state" class="empty-state content-hidden">
     <p>Select the filters to see the results</p>
   </div>
@@ -490,6 +500,8 @@ const CONCERN_ORDER = ["Hormone Balance", "Nutrition", "Sleep / Rest"];
 const SERIES_COLORS = ["var(--accent)", "var(--teal)", "var(--sky)", "var(--warm)"];
 const CONCERN_COLORS = ["var(--accent)", "var(--warm)", "var(--teal)"];
 const LABEL_MIN_PCT = 8;
+const ANSWER_ORDER = ["Never", "Rarely", "Sometimes", "Often", "Always", "Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"];
+const ANSWER_COLORS = ["var(--warm)", "var(--sky)", "var(--sage)", "var(--teal)", "var(--accent)"];
 
 function pointOnCircle(cx, cy, r, angleDeg) {
   const rad = (angleDeg - 90) * Math.PI / 180;
@@ -655,6 +667,77 @@ function updateQuestionnaireOptions() {
   render();
 }
 
+function sortAnswers(labels) {
+  return labels.slice().sort(function (x, y) {
+    const ix = ANSWER_ORDER.indexOf(x), iy = ANSWER_ORDER.indexOf(y);
+    if (ix !== -1 && iy !== -1) return ix - iy;
+    if (ix !== -1) return -1;
+    if (iy !== -1) return 1;
+    const nx = parseFloat(x), ny = parseFloat(y);
+    if (!isNaN(nx) && !isNaN(ny)) return nx - ny;
+    return x.localeCompare(y);
+  });
+}
+
+function escapeHtml(t) {
+  return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function renderStatements(rows) {
+  document.getElementById("st-count").textContent = rows.length;
+
+  const questions = [];
+  rows.forEach(function (r) {
+    (r.answers || []).forEach(function (a) {
+      if (!questions.some(function (q) { return q.q === a.q; })) questions.push({ i: a.i, q: a.q });
+    });
+  });
+  questions.sort(function (x, y) { return x.i - y.i; });
+
+  const container = document.getElementById("statements-charts");
+  if (!questions.length) {
+    container.innerHTML = '<p class="subtitle">No data</p>';
+    return;
+  }
+
+  container.innerHTML = questions.map(function (q, n) {
+    return '<div class="chart-container">' +
+      '<h3 class="chart-title">' + (n + 1) + '. ' + escapeHtml(q.q) + '</h3>' +
+      '<div class="pie-card" id="st-chart-' + n + '"></div>' +
+      '</div>';
+  }).join("");
+
+  questions.forEach(function (q, n) {
+    const counts = {};
+    rows.forEach(function (r) {
+      (r.answers || []).forEach(function (a) {
+        if (a.q === q.q) counts[a.a] = (counts[a.a] || 0) + 1;
+      });
+    });
+    const slices = sortAnswers(Object.keys(counts)).map(function (label) {
+      return { label: label, value: counts[label] };
+    });
+    const colors = slices.map(function (s, k) {
+      const pos = ANSWER_ORDER.indexOf(s.label);
+      return ANSWER_COLORS[(pos >= 0 ? pos : k) % ANSWER_COLORS.length];
+    });
+    renderPie(document.getElementById("st-chart-" + n), slices, colors);
+  });
+}
+
+function showArea(id) {
+  ["content-area", "statements-area", "empty-state"].forEach(function (a) {
+    const el = document.getElementById(a);
+    if (a === id) {
+      el.classList.remove("content-hidden");
+      el.classList.add("content-visible");
+    } else {
+      el.classList.add("content-hidden");
+      el.classList.remove("content-visible");
+    }
+  });
+}
+
 function render() {
   const type = document.getElementById("type-filter").value;
   const questionnaire = document.getElementById("questionnaire-filter").value;
@@ -663,10 +746,7 @@ function render() {
   const sector = document.getElementById("org-filter").value;
 
   if (!isAllFiltersSelected()) {
-    document.getElementById("content-area").classList.add("content-hidden");
-    document.getElementById("content-area").classList.remove("content-visible");
-    document.getElementById("empty-state").classList.remove("content-hidden");
-    document.getElementById("empty-state").classList.add("content-visible");
+    showArea("empty-state");
     return;
   }
 
@@ -678,10 +758,15 @@ function render() {
       (sector === "all" || r.sector === sector);
   });
 
-  document.getElementById("content-area").classList.add("content-visible");
-  document.getElementById("content-area").classList.remove("content-hidden");
-  document.getElementById("empty-state").classList.add("content-hidden");
-  document.getElementById("empty-state").classList.remove("content-visible");
+  document.getElementById("footer-note").textContent = "Updated: " + new Date().toLocaleString("en-GB");
+
+  if (type === "Self-Check" && questionnaire.indexOf("Quality of Life") !== 0) {
+    showArea("statements-area");
+    renderStatements(rows);
+    return;
+  }
+
+  showArea("content-area");
 
   document.getElementById("stat-count").textContent = rows.length;
   document.getElementById("stat-health").textContent = rows.length ? comma(average(rows, "health"), 1) : "–";
