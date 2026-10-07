@@ -17,6 +17,33 @@ const TALLY_FORMS = {
   }
 };
 
+// Traduções francês/português -> inglês (a preencher na fase 2)
+const TRANSLATIONS = {
+};
+
+const KEYS = {
+  group:    ["select your group", "votre groupe", "seu grupo"],
+  country:  ["which region", "quelle région", "que região"],
+  sector:   ["industry", "secteur d", "indústria"],
+  age:      ["age group", "tranche d", "faixa etária"],
+  role:     ["role level", "votre poste", "cargo atual"],
+  concern:  ["topics concerns you", "sujet vous préoccupe", "maior desafio pessoal"],
+  mobility: ["mobility", "mobilité", "mobilidade"],
+  selfCare: ["self-care", "soins personnels", "cuidados pessoais"],
+  daily:    ["routine &", "activités quotidiennes", "rotina e vida"],
+  pain:     ["pain / discomfort", "douleur", "dor / desconforto"],
+  anxiety:  ["anxiety / depression", "anxiété / dépression", "ansiedade / depressão"],
+  health:   ["define your health", "évaluez-vous votre santé", "nível de saúde"],
+  weight:   ["your weight", "votre poids", "seu peso"],
+  height:   ["how tall", "votre taille", "sua altura"]
+};
+
+const PROBLEM_WORDS = [
+  "slight", "some", "moderate", "severe", "extreme", "unable",
+  "léger", "légère", "quelque", "modéré", "sévère", "extrême", "incapable",
+  "ligeir", "algum", "alguns", "moderad", "grave", "extrem", "incapaz"
+];
+
 async function getSubmissions(formId, apiKey) {
   let page = 1, questions = [], submissions = [];
   while (true) {
@@ -37,12 +64,12 @@ function toText(answer) {
   if (answer === null || answer === undefined) return "";
   if (Array.isArray(answer)) return answer.map(toText).join(", ");
   if (typeof answer === "object") return answer.name || answer.label || answer.value || JSON.stringify(answer);
-  return String(answer);
+  return String(answer).trim();
 }
 
 function buildFields(questions, submission) {
   const titles = {};
-  for (const q of questions) titles[q.id] = (q.title || "").toLowerCase();
+  for (const q of questions) titles[q.id] = (q.title || "").toLowerCase().replace(/’/g, "'");
   return (submission.responses || []).map(r => ({
     title: titles[r.questionId] || "",
     value: toText(r.answer)
@@ -50,12 +77,18 @@ function buildFields(questions, submission) {
 }
 
 function matches(title, keys) {
-  return keys.some(k => title.includes(k));
+  return keys.some(k => title.includes(k.replace(/’/g, "'")));
 }
 
 function findText(fields, keys) {
   const f = fields.find(f => matches(f.title, keys) && f.value);
   return f ? f.value : null;
+}
+
+function tr(value) {
+  if (!value) return null;
+  const k = value.trim().toLowerCase();
+  return TRANSLATIONS[k] || value.trim();
 }
 
 function findNumber(fields, keys) {
@@ -67,9 +100,22 @@ function findNumber(fields, keys) {
   return 0;
 }
 
-function findBoolean(fields, keys) {
+function hasProblem(fields, keys) {
   const v = (findText(fields, keys) || "").toLowerCase();
-  return v === "yes" || v === "true" || v === "sim";
+  if (!v) return false;
+  const n = parseFloat(v);
+  if (!isNaN(n)) return n > 1;
+  return PROBLEM_WORDS.some(w => v.includes(w));
+}
+
+function normalizeGroup(g) {
+  if (!g) return "Unknown";
+  return g.replace(/^(groupe|grupo|group)\s*/i, "Group ").trim();
+}
+
+function normalizeHeight(h) {
+  if (h > 3) return Math.round(h) / 100;
+  return h;
 }
 
 export default async function handler(req, res) {
@@ -80,7 +126,10 @@ export default async function handler(req, res) {
   }
 
   const debug = req.query && req.query.debug === "1";
+  const valuesMode = req.query && req.query.values === "1";
   const responses = [], errors = [], forms = [];
+  const values = {};
+  const VALUE_FIELDS = ["country", "sector", "age", "role", "concern", "mobility", "selfCare", "daily", "pain", "anxiety", "health"];
 
   for (const [type, questionnaires] of Object.entries(TALLY_FORMS)) {
     for (const [questionnaire, formId] of Object.entries(questionnaires)) {
@@ -92,23 +141,33 @@ export default async function handler(req, res) {
         for (const s of submissions) {
           if (s.isCompleted === false) continue;
           const f = buildFields(questions, s);
+
+          if (valuesMode && questionnaire.startsWith("Quality of Life")) {
+            for (const key of VALUE_FIELDS) {
+              const v = findText(f, KEYS[key]);
+              if (!v) continue;
+              values[key] = values[key] || [];
+              if (!values[key].includes(v)) values[key].push(v);
+            }
+          }
+
           responses.push({
             type,
             questionnaire,
-            workshop: findText(f, ["group", "workshop"]) || "Unknown",
-            country: findText(f, ["country"]) || "Unknown",
-            sector: findText(f, ["organization", "organisation", "sector"]) || "Unknown",
-            age: findText(f, ["age"]) || "Unknown",
-            role: findText(f, ["role", "position"]) || "Unknown",
-            concern: findText(f, ["concern"]) || "Unknown",
-            mobility: findBoolean(f, ["mobility"]),
-            selfCare: findBoolean(f, ["self-care", "selfcare", "self care"]),
-            daily: findBoolean(f, ["daily", "usual activities"]),
-            pain: findBoolean(f, ["pain"]),
-            anxiety: findBoolean(f, ["anxiety"]),
-            health: findNumber(f, ["health"]),
-            weight: findNumber(f, ["weight"]),
-            height: findNumber(f, ["height"])
+            workshop: normalizeGroup(findText(f, KEYS.group)),
+            country:  tr(findText(f, KEYS.country)) || "Unknown",
+            sector:   tr(findText(f, KEYS.sector)) || "Unknown",
+            age:      tr(findText(f, KEYS.age)) || "Unknown",
+            role:     tr(findText(f, KEYS.role)) || "Unknown",
+            concern:  tr(findText(f, KEYS.concern)) || "Unknown",
+            mobility: hasProblem(f, KEYS.mobility),
+            selfCare: hasProblem(f, KEYS.selfCare),
+            daily:    hasProblem(f, KEYS.daily),
+            pain:     hasProblem(f, KEYS.pain),
+            anxiety:  hasProblem(f, KEYS.anxiety),
+            health:   findNumber(f, KEYS.health),
+            weight:   findNumber(f, KEYS.weight),
+            height:   normalizeHeight(findNumber(f, KEYS.height))
           });
         }
       } catch (e) {
@@ -117,5 +176,6 @@ export default async function handler(req, res) {
     }
   }
 
+  if (valuesMode) return res.status(200).json({ errors, values });
   res.status(200).json(debug ? { errors, forms } : { responses, errors });
 }
