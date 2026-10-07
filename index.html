@@ -709,7 +709,7 @@ function render() {
   renderPie(document.getElementById("chart-concern"), countBy(rows, "concern", CONCERN_ORDER), CONCERN_COLORS);
   renderHealthStatus(document.getElementById("chart-health"), rows);
 
-  document.getElementById("footer-note").textContent = "Dados atualizados em " + new Date().toLocaleString("pt-PT");
+  document.getElementById("footer-note").textContent = "Last update: " + new Date().toLocaleString("pt-PT");
 }
 
 document.getElementById("type-filter").addEventListener("change", updateQuestionnaireOptions);
