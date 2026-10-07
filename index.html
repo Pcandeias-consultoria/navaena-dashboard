@@ -1,0 +1,724 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Navaena Questionnaires</title>
+<style>
+:root {
+  --bg-main: #F8F5EF;
+  --bg-secondary: #F0F0ED;
+  --text-primary: #2C2C2A;
+  --text-secondary: #6B6B69;
+  --border: #E5E5E1;
+  --accent: #69733D;
+  --accent-light: #B5D4CE;
+  --accent-muted: #F0F0ED;
+  --green: #69733D;
+  --teal: #3FA18F;
+  --sky: #4A9FB3;
+  --warm: #D96B1E;
+  --sage: #6B8E7F;
+  --ink-brand: #623316;
+  --ink-value: #484C59;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-main: #1A1A18;
+    --bg-secondary: #2A2A27;
+    --text-primary: #E8E8E6;
+    --text-secondary: #A8A8A5;
+    --border: #3A3A37;
+    --accent: #8A9166;
+    --accent-light: #4A7A68;
+    --accent-muted: #2A3F38;
+    --green: #8A9166;
+    --teal: #6AB5A8;
+    --sky: #6DB3C3;
+    --warm: #E8905C;
+    --sage: #8BA899;
+    --ink-brand: #D9A87C;
+    --ink-value: #B4B8C4;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-main: #1A1A18;
+  --bg-secondary: #2A2A27;
+  --text-primary: #E8E8E6;
+  --text-secondary: #A8A8A5;
+  --border: #3A3A37;
+  --accent: #8A9166;
+  --accent-light: #4A7A68;
+  --accent-muted: #2A3F38;
+  --green: #8A9166;
+  --teal: #6AB5A8;
+  --sky: #6DB3C3;
+  --warm: #E8905C;
+  --sage: #8BA899;
+  --ink-brand: #D9A87C;
+  --ink-value: #B4B8C4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.6;
+  padding-block: 2rem;
+  padding-inline: 1rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.header-logo {
+  height: 100px;
+  margin-bottom: 1.5rem;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  text-wrap: balance;
+  line-height: 1.3;
+  color: var(--ink-brand);
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.filters-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+.filters-row {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-group label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.filter-group select {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: inherit;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.filter-group select:hover {
+  border-color: var(--accent);
+}
+
+.filter-group select:focus-visible {
+  outline: 2px solid var(--ink-brand);
+  outline-offset: 2px;
+}
+
+.filter-group select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.content-hidden {
+  display: none;
+}
+
+.content-visible {
+  display: block;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-secondary);
+}
+
+.loading-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-secondary);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.stat-tile {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ink-brand);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--ink-brand);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.stat-interpretation {
+  font-size: 0.8rem;
+  color: #E8905C;
+  font-style: italic;
+  margin-top: 0.5rem;
+}
+
+.charts-section {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.chart-container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.pie-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.pie-chart-svg {
+  width: 210px;
+  height: 210px;
+  flex-shrink: 0;
+}
+
+.pie-legend {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.health-concern {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.health-concern-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.health-concern-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.health-concern-fill {
+  height: 20px;
+  background: var(--accent-muted);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--ink-brand);
+  flex: 1;
+  min-width: 100px;
+}
+
+.health-concern-progress {
+  height: 100%;
+  background: var(--ink-brand);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.health-concern-value {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--ink-value);
+  min-width: 2.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+footer {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-concern-progress { transition: none; }
+}
+
+@media (max-width: 900px) {
+  .charts-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .filters-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .filter-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .filter-group select {
+    flex: 1;
+  }
+}
+</style>
+
+<div class="container">
+  <header>
+    <img src="https://via.placeholder.com/200" alt="Navaena" class="header-logo" />
+    <h1>Navaena Questionnaires</h1>
+
+    <div class="filters-section">
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="type-filter">Type:</label>
+          <select id="type-filter"></select>
+        </div>
+        <div class="filter-group">
+          <label for="questionnaire-filter">Questionnaire:</label>
+          <select id="questionnaire-filter" disabled></select>
+        </div>
+      </div>
+
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="country-filter">Country:</label>
+          <select id="country-filter"></select>
+        </div>
+        <div class="filter-group">
+          <label for="workshop-filter">Group:</label>
+          <select id="workshop-filter"></select>
+        </div>
+        <div class="filter-group">
+          <label for="org-filter">Organization Type:</label>
+          <select id="org-filter"></select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="loading-area" class="loading-state content-visible">
+    <p>Carregando dados...</p>
+  </div>
+
+  <div id="content-area" class="content-hidden">
+    <div class="stats-grid">
+      <div class="stat-tile">
+        <div class="stat-value" id="stat-count">–</div>
+        <div class="stat-label">Submissions</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-value" id="stat-health">–</div>
+        <div class="stat-label">Avg Health Score</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-value" id="stat-weight">–</div>
+        <div class="stat-label">Avg Weight (kg)</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-value" id="stat-height">–</div>
+        <div class="stat-label">Avg Height (m)</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-value" id="stat-bmi">–</div>
+        <div class="stat-label">Body Mass Index</div>
+        <div class="stat-interpretation" id="stat-bmi-interpretation"></div>
+      </div>
+    </div>
+
+    <div class="charts-section">
+      <div class="chart-container">
+        <h3 class="chart-title">Age Distribution</h3>
+        <div class="pie-card" id="chart-age"></div>
+      </div>
+
+      <div class="chart-container">
+        <h3 class="chart-title">Role Level</h3>
+        <div class="pie-card" id="chart-role"></div>
+      </div>
+
+      <div class="chart-container">
+        <h3 class="chart-title">Health Concerns</h3>
+        <div class="pie-card" id="chart-concern"></div>
+      </div>
+
+      <div class="chart-container">
+        <h3 class="chart-title">Health Status Overview</h3>
+        <div id="chart-health" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="empty-state" class="empty-state content-hidden">
+    <p>Selecione os filtros para ver resultados</p>
+  </div>
+
+  <footer>
+    <p id="footer-note">Navaena Dashboard</p>
+  </footer>
+</div>
+
+<script>
+const FEEDBACK_QUESTIONNAIRES = ["Eat", "Move", "Rest", "Connect", "Hormonal Flow"];
+const SELFCHECK_QUESTIONNAIRES = ["Quality of Life (Start)", "Eat", "Move", "Rest", "Connect", "Hormonal Flow", "Quality of Life (End)", "Quality of Life (1 year)"];
+
+let RESPONSES = [];
+
+async function loadData() {
+  try {
+    const response = await fetch('/api/tally');
+    const data = await response.json();
+    RESPONSES = data.responses || [];
+
+    document.getElementById("loading-area").classList.add("content-hidden");
+    document.getElementById("loading-area").classList.remove("content-visible");
+
+    populateFilters();
+    render();
+  } catch (error) {
+    console.error('Erro ao carregar dados:', error);
+    document.getElementById("loading-area").innerHTML = '<p>Erro ao carregar dados. Tente novamente.</p>';
+  }
+}
+
+const AGE_ORDER = ["25–34", "35–44", "45–54", "55–64"];
+const ROLE_ORDER = ["Entry level", "Mid-level specialist", "Senior specialist", "Executive / Director"];
+const CONCERN_ORDER = ["Hormone Balance", "Nutrition", "Sleep / Rest"];
+const SERIES_COLORS = ["var(--accent)", "var(--teal)", "var(--sky)", "var(--warm)"];
+const CONCERN_COLORS = ["var(--accent)", "var(--warm)", "var(--teal)"];
+const LABEL_MIN_PCT = 8;
+
+function pointOnCircle(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function slicePath(cx, cy, r, startAngle, endAngle) {
+  const sweep = endAngle - startAngle;
+  if (sweep >= 359.99) {
+    return "M " + cx + " " + (cy - r) + " A " + r + " " + r + " 0 1 1 " + (cx - 0.01) + " " + (cy - r) + " Z";
+  }
+  const p1 = pointOnCircle(cx, cy, r, startAngle);
+  const p2 = pointOnCircle(cx, cy, r, endAngle);
+  const largeArc = sweep > 180 ? 1 : 0;
+  return "M " + cx + " " + cy +
+    " L " + p1.x.toFixed(2) + " " + p1.y.toFixed(2) +
+    " A " + r + " " + r + " 0 " + largeArc + " 1 " + p2.x.toFixed(2) + " " + p2.y.toFixed(2) +
+    " Z";
+}
+
+function renderPie(container, slices, customColors) {
+  const total = slices.reduce(function (sum, s) { return sum + s.value; }, 0);
+  const CX = 105, CY = 105, R = 88;
+
+  if (total === 0) {
+    container.innerHTML = '<p class="subtitle">Sem dados</p>';
+    return;
+  }
+
+  let angle = 0;
+  let paths = "";
+  let labels = "";
+  let legend = "";
+  let described = [];
+
+  slices.forEach(function (slice, i) {
+    const pct = slice.value / total * 100;
+    const sweep = slice.value / total * 360;
+    const colors = customColors || SERIES_COLORS;
+    const color = colors[i % colors.length];
+    const rounded = Math.round(pct);
+
+    paths += '<path d="' + slicePath(CX, CY, R, angle, angle + sweep) +
+      '" style="fill:' + color + '" stroke="var(--bg-secondary)" stroke-width="2"></path>';
+
+    if (pct >= LABEL_MIN_PCT) {
+      const mid = pointOnCircle(CX, CY, R * 0.62, angle + sweep / 2);
+      labels += '<text x="' + mid.x.toFixed(1) + '" y="' + mid.y.toFixed(1) + '"' +
+        ' text-anchor="middle" dominant-baseline="central"' +
+        ' font-size="14" font-weight="400" fill="var(--ink-value)">' +
+        rounded + '%</text>';
+    }
+
+    legend += '<div class="legend-item"><div class="legend-color" style="background:' + color +
+      '"></div><span>' + slice.label + '</span></div>';
+
+    described.push(slice.label + " " + rounded + "%");
+    angle += sweep;
+  });
+
+  container.innerHTML =
+    '<svg class="pie-chart-svg" viewBox="0 0 210 210" role="img" aria-label="' + described.join(", ") + '">' +
+    paths + labels +
+    '</svg>' +
+    '<div class="pie-legend">' + legend + '</div>';
+}
+
+function countBy(rows, key, order) {
+  return order
+    .map(function (label) {
+      return { label: label, value: rows.filter(function (r) { return r[key] === label; }).length };
+    })
+    .filter(function (s) { return s.value > 0; });
+}
+
+function renderHealthStatus(container, rows) {
+  const n = rows.length;
+  const share = function (predicate) {
+    return n ? rows.filter(predicate).length / n : 0;
+  };
+
+  const dimensions = [
+    { label: "No Mobility Issues", value: share(function (r) { return !r.mobility; }) },
+    { label: "No Self-Care Issues", value: share(function (r) { return !r.selfCare; }) },
+    { label: "Daily Activity Issues", value: share(function (r) { return r.daily; }) },
+    { label: "Pain/Discomfort", value: share(function (r) { return r.pain; }) },
+    { label: "Anxiety/Depression", value: share(function (r) { return r.anxiety; }) }
+  ];
+
+  container.innerHTML = dimensions.map(function (d) {
+    const pct = Math.round(d.value * 100);
+    return '<div class="health-concern">' +
+      '<div class="health-concern-label">' + d.label + '</div>' +
+      '<div class="health-concern-bar">' +
+      '<div class="health-concern-fill">' +
+      '<div class="health-concern-progress" style="width:' + pct + '%"></div>' +
+      '</div>' +
+      '<div class="health-concern-value">' + pct + '%</div>' +
+      '</div>' +
+      '</div>';
+  }).join("");
+}
+
+function comma(value, decimals) {
+  return value.toFixed(decimals).replace(".", ",");
+}
+
+function average(rows, key) {
+  return rows.reduce(function (sum, r) { return sum + r[key]; }, 0) / rows.length;
+}
+
+function populateFilter(select, values) {
+  select.innerHTML = '<option value="all">All</option>' +
+    values.map(function (v) { return '<option value="' + v + '">' + v + '</option>'; }).join("");
+}
+
+function populateFilters() {
+  const uniqueTypes = Array.from(new Set(RESPONSES.map(function (r) { return r.type; })));
+  populateFilter(document.getElementById("type-filter"), uniqueTypes);
+  populateFilter(document.getElementById("workshop-filter"), Array.from(new Set(RESPONSES.map(function (r) { return r.workshop; }))));
+  populateFilter(document.getElementById("country-filter"), Array.from(new Set(RESPONSES.map(function (r) { return r.country; }))));
+  populateFilter(document.getElementById("org-filter"), Array.from(new Set(RESPONSES.map(function (r) { return r.sector; }))));
+}
+
+function isAllFiltersSelected() {
+  const type = document.getElementById("type-filter").value;
+  const questionnaire = document.getElementById("questionnaire-filter").value;
+  const workshop = document.getElementById("workshop-filter").value;
+  const country = document.getElementById("country-filter").value;
+  const sector = document.getElementById("org-filter").value;
+
+  const hasType = type !== "all";
+  const hasQuestionnaire = questionnaire !== "all";
+  const hasWorkshop = workshop !== "all";
+  const hasCountry = country !== "all";
+  const hasSector = sector !== "all";
+
+  if (!hasType || !hasQuestionnaire) {
+    return false;
+  }
+
+  return hasWorkshop || hasCountry || hasSector;
+}
+
+function updateQuestionnaireOptions() {
+  const typeSelect = document.getElementById("type-filter");
+  const questionnaireSelect = document.getElementById("questionnaire-filter");
+  const selectedType = typeSelect.value;
+
+  if (selectedType === "all") {
+    questionnaireSelect.disabled = true;
+    questionnaireSelect.innerHTML = '<option value="all">All</option>';
+  } else if (selectedType === "Feedback") {
+    questionnaireSelect.disabled = false;
+    questionnaireSelect.innerHTML = '<option value="all">All</option>' +
+      FEEDBACK_QUESTIONNAIRES.map(function (q) { return '<option value="' + q + '">' + q + '</option>'; }).join("");
+  } else if (selectedType === "Self-Check") {
+    questionnaireSelect.disabled = false;
+    questionnaireSelect.innerHTML = '<option value="all">All</option>' +
+      SELFCHECK_QUESTIONNAIRES.map(function (q) { return '<option value="' + q + '">' + q + '</option>'; }).join("");
+  }
+
+  render();
+}
+
+function render() {
+  const type = document.getElementById("type-filter").value;
+  const questionnaire = document.getElementById("questionnaire-filter").value;
+  const workshop = document.getElementById("workshop-filter").value;
+  const country = document.getElementById("country-filter").value;
+  const sector = document.getElementById("org-filter").value;
+
+  if (!isAllFiltersSelected()) {
+    document.getElementById("content-area").classList.add("content-hidden");
+    document.getElementById("content-area").classList.remove("content-visible");
+    document.getElementById("empty-state").classList.remove("content-hidden");
+    document.getElementById("empty-state").classList.add("content-visible");
+    return;
+  }
+
+  const rows = RESPONSES.filter(function (r) {
+    return r.type === type &&
+      r.questionnaire === questionnaire &&
+      (workshop === "all" || r.workshop === workshop) &&
+      (country === "all" || r.country === country) &&
+      (sector === "all" || r.sector === sector);
+  });
+
+  document.getElementById("content-area").classList.add("content-visible");
+  document.getElementById("content-area").classList.remove("content-hidden");
+  document.getElementById("empty-state").classList.add("content-hidden");
+  document.getElementById("empty-state").classList.remove("content-visible");
+
+  document.getElementById("stat-count").textContent = rows.length;
+  document.getElementById("stat-health").textContent = rows.length ? comma(average(rows, "health"), 1) : "–";
+  const avgWeight = rows.length ? average(rows, "weight") : 0;
+  const avgHeight = rows.length ? average(rows, "height") : 0;
+  document.getElementById("stat-weight").textContent = rows.length ? Math.round(avgWeight) : "–";
+  document.getElementById("stat-height").textContent = rows.length ? comma(avgHeight, 2) : "–";
+  const bmi = rows.length && avgHeight > 0 && avgWeight > 0 ? avgWeight / (avgHeight * avgHeight) : 0;
+
+  if (rows.length) {
+    document.getElementById("stat-bmi").textContent = comma(bmi, 1);
+    let interpretation = "";
+    if (bmi < 18.5) interpretation = "Low Weight";
+    else if (bmi < 25) interpretation = "Normal Weight";
+    else if (bmi < 30) interpretation = "Overweight";
+    else interpretation = "Obesity";
+    document.getElementById("stat-bmi-interpretation").textContent = interpretation;
+  } else {
+    document.getElementById("stat-bmi").textContent = "–";
+    document.getElementById("stat-bmi-interpretation").textContent = "";
+  }
+
+  renderPie(document.getElementById("chart-age"), countBy(rows, "age", AGE_ORDER));
+  renderPie(document.getElementById("chart-role"), countBy(rows, "role", ROLE_ORDER));
+  renderPie(document.getElementById("chart-concern"), countBy(rows, "concern", CONCERN_ORDER), CONCERN_COLORS);
+  renderHealthStatus(document.getElementById("chart-health"), rows);
+
+  document.getElementById("footer-note").textContent = "Dados atualizados em " + new Date().toLocaleString("pt-PT");
+}
+
+document.getElementById("type-filter").addEventListener("change", updateQuestionnaireOptions);
+document.getElementById("questionnaire-filter").addEventListener("change", render);
+document.getElementById("workshop-filter").addEventListener("change", render);
+document.getElementById("country-filter").addEventListener("change", render);
+document.getElementById("org-filter").addEventListener("change", render);
+
+loadData();
+</script>
+
+</body></html>
