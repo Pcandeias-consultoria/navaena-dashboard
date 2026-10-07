@@ -17,77 +17,105 @@ const TALLY_FORMS = {
   }
 };
 
-async function fetchTallyResponses(formId, type, questionnaire) {
-  const apiKey = process.env.TALLY_API_KEY;
-  if (!apiKey) throw new Error("API key não configurada");
+async function getSubmissions(formId, apiKey) {
+  let page = 1, questions = [], submissions = [];
+  while (true) {
+    const r = await fetch(`https://api.tally.so/forms/${formId}/submissions?page=${page}`, {
+      headers: { Authorization: `Bearer ${apiKey}` }
+    });
+    if (!r.ok) throw new Error(`o Tally respondeu com o erro ${r.status}`);
+    const data = await r.json();
+    if (page === 1) questions = data.questions || [];
+    submissions = submissions.concat(data.submissions || []);
+    if (!data.hasMore) break;
+    page++;
+  }
+  return { questions, submissions };
+}
 
-  const response = await fetch(`https://api.tally.so/api/v1/forms/${formId}/responses`, {
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    }
-  });
+function toText(answer) {
+  if (answer === null || answer === undefined) return "";
+  if (Array.isArray(answer)) return answer.map(toText).join(", ");
+  if (typeof answer === "object") return answer.name || answer.label || answer.value || JSON.stringify(answer);
+  return String(answer);
+}
 
-  if (!response.ok) return [];
-
-  const data = await response.json();
-  return (data.data || []).map(r => ({
-    type,
-    questionnaire,
-    workshop: extractField(r.fields, "group") || "Unknown",
-    country: extractField(r.fields, "country") || "Unknown",
-    sector: extractField(r.fields, "organization") || "Unknown",
-    age: extractField(r.fields, "age") || "Unknown",
-    role: extractField(r.fields, "role") || "Unknown",
-    concern: extractField(r.fields, "concern") || "Unknown",
-    mobility: extractBoolean(r.fields, "mobility"),
-    selfCare: extractBoolean(r.fields, "selfcare"),
-    daily: extractBoolean(r.fields, "daily"),
-    pain: extractBoolean(r.fields, "pain"),
-    anxiety: extractBoolean(r.fields, "anxiety"),
-    health: extractNumber(r.fields, "health") || 0,
-    weight: extractNumber(r.fields, "weight") || 0,
-    height: extractNumber(r.fields, "height") || 0
+function buildFields(questions, submission) {
+  const titles = {};
+  for (const q of questions) titles[q.id] = (q.title || "").toLowerCase();
+  return (submission.responses || []).map(r => ({
+    title: titles[r.questionId] || "",
+    value: toText(r.answer)
   }));
 }
 
-function extractField(fields, key) {
-  const field = fields.find(f => f.key.toLowerCase().includes(key.toLowerCase()));
-  return field ? field.value : null;
+function matches(title, keys) {
+  return keys.some(k => title.includes(k));
 }
 
-function extractNumber(fields, key) {
-  const value = extractField(fields, key);
-  return value ? parseFloat(value) : 0;
+function findText(fields, keys) {
+  const f = fields.find(f => matches(f.title, keys) && f.value);
+  return f ? f.value : null;
 }
 
-function extractBoolean(fields, key) {
-  const value = extractField(fields, key);
-  return value && (value === true || value.toLowerCase() === "yes" || value.toLowerCase() === "true");
+function findNumber(fields, keys) {
+  for (const f of fields) {
+    if (!matches(f.title, keys)) continue;
+    const n = parseFloat(String(f.value).replace(",", "."));
+    if (!isNaN(n)) return n;
+  }
+  return 0;
+}
+
+function findBoolean(fields, keys) {
+  const v = (findText(fields, keys) || "").toLowerCase();
+  return v === "yes" || v === "true" || v === "sim";
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  res.setHeader("Cache-Control", "no-store");
+  const apiKey = process.env.TALLY_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ responses: [], errors: ["A variável TALLY_API_KEY não está configurada no Vercel"] });
   }
 
-  try {
-    let responses = [];
+  const debug = req.query && req.query.debug === "1";
+  const responses = [], errors = [], forms = [];
 
-    for (const [type, questionnaires] of Object.entries(TALLY_FORMS)) {
-      for (const [questionnaire, formId] of Object.entries(questionnaires)) {
-        const data = await fetchTallyResponses(formId, type, questionnaire);
-        responses = responses.concat(data);
+  for (const [type, questionnaires] of Object.entries(TALLY_FORMS)) {
+    for (const [questionnaire, formId] of Object.entries(questionnaires)) {
+      try {
+        const { questions, submissions } = await getSubmissions(formId, apiKey);
+        if (debug) {
+          forms.push({ type, questionnaire, formId, submissions: submissions.length, questions: questions.map(q => q.title) });
+        }
+        for (const s of submissions) {
+          if (s.isCompleted === false) continue;
+          const f = buildFields(questions, s);
+          responses.push({
+            type,
+            questionnaire,
+            workshop: findText(f, ["group", "workshop"]) || "Unknown",
+            country: findText(f, ["country"]) || "Unknown",
+            sector: findText(f, ["organization", "organisation", "sector"]) || "Unknown",
+            age: findText(f, ["age"]) || "Unknown",
+            role: findText(f, ["role", "position"]) || "Unknown",
+            concern: findText(f, ["concern"]) || "Unknown",
+            mobility: findBoolean(f, ["mobility"]),
+            selfCare: findBoolean(f, ["self-care", "selfcare", "self care"]),
+            daily: findBoolean(f, ["daily", "usual activities"]),
+            pain: findBoolean(f, ["pain"]),
+            anxiety: findBoolean(f, ["anxiety"]),
+            health: findNumber(f, ["health"]),
+            weight: findNumber(f, ["weight"]),
+            height: findNumber(f, ["height"])
+          });
+        }
+      } catch (e) {
+        errors.push(`${type} / ${questionnaire}: ${e.message}`);
       }
     }
-
-    res.status(200).json({ responses });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
   }
+
+  res.status(200).json(debug ? { errors, forms } : { responses, errors });
 }
