@@ -611,7 +611,7 @@ function populateFilters() {
   populateFilter(document.getElementById("type-filter"), uniqueTypes);
   populateFilter(document.getElementById("workshop-filter"), ["Group 1", "Group 2", "Group 3", "Group 4", "Group 5"]);
   populateFilter(document.getElementById("country-filter"), ["Belgium", "Portugal"]);
-  populateFilter(document.getElementById("org-filter"), Array.from(new Set(RESPONSES.map(function (r) { return r.sector; }))));
+       populateFilter(document.getElementById("org-filter"), ["Public Sector & Non-profit", "Financial Services & Insurance"]);
 }
 
 function isAllFiltersSelected() {
