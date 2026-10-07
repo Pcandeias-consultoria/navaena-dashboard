@@ -179,8 +179,9 @@ function hasProblem(fields, keys) {
 }
 
 function normalizeGroup(g) {
-  if (!g) return "Unknown";
-  return g.replace(/^(groupe|grupo|group)\s*/i, "Group ").trim();
+     if (!g) return "Unknown";
+     const m = String(g).match(/\d+/);
+     return m ? "Group " + m[0] : String(g).trim();
 }
 
 // Junta as perguntas das 3 línguas: cada pergunta em FR/PT fica com o título da pergunta em inglês
