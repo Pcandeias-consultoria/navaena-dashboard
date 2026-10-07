@@ -64,20 +64,32 @@ const TRANSLATIONS = {
   "bouger": "Movement",
   "connect": "Connection",
   "conexão": "Connection",
-  "se connecter": "Connection"
+  "se connecter": "Connection",
+
+  // Respostas das perguntas (Eat, Move, etc.)
+  "never": "Never", "jamais": "Never", "nunca": "Never",
+  "rarely": "Rarely", "rarement": "Rarely", "raramente": "Rarely",
+  "sometimes": "Sometimes", "parfois": "Sometimes", "às vezes": "Sometimes", "as vezes": "Sometimes",
+  "often": "Often", "souvent": "Often", "frequentemente": "Often", "muitas vezes": "Often",
+  "always": "Always", "toujours": "Always", "sempre": "Always",
+  "strongly disagree": "Strongly disagree", "pas du tout d'accord": "Strongly disagree", "discordo totalmente": "Strongly disagree",
+  "disagree": "Disagree", "pas d'accord": "Disagree", "discordo": "Disagree",
+  "neutral": "Neutral", "neutre": "Neutral", "neutro": "Neutral",
+  "agree": "Agree", "d'accord": "Agree", "concordo": "Agree",
+  "strongly agree": "Strongly agree", "tout à fait d'accord": "Strongly agree", "concordo totalmente": "Strongly agree"
 };
 
-   // País de cada grupo
-   const GROUP_COUNTRY = {
-     "Group 1": "Belgium",
-     "Group 2": "Portugal"
-   };
+// País de cada grupo
+const GROUP_COUNTRY = {
+  "Group 1": "Belgium",
+  "Group 2": "Portugal"
+};
 
-   // Tipo de organização de cada grupo
-   const GROUP_SECTOR = {
-     "Group 1": "Public Sector & Non-profit",
-     "Group 2": "Financial Services & Insurance"
-   };
+// Tipo de organização de cada grupo
+const GROUP_SECTOR = {
+  "Group 1": "Public Sector & Non-profit",
+  "Group 2": "Financial Services & Insurance"
+};
 
 const KEYS = {
   group:    ["select your group", "votre groupe", "seu grupo"],
@@ -145,7 +157,7 @@ function findText(fields, keys) {
 
 function tr(value) {
   if (!value) return null;
-  const k = value.trim().toLowerCase();
+  const k = value.trim().toLowerCase().replace(/’/g, "'");
   return TRANSLATIONS[k] || value.trim();
 }
 
@@ -169,6 +181,27 @@ function hasProblem(fields, keys) {
 function normalizeGroup(g) {
   if (!g) return "Unknown";
   return g.replace(/^(groupe|grupo|group)\s*/i, "Group ").trim();
+}
+
+// Junta as perguntas das 3 línguas: cada pergunta em FR/PT fica com o título da pergunta em inglês
+function cleanTitle(t) {
+  return String(t || "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+}
+
+function buildStatementMap(questions) {
+  const blocks = [[]];
+  for (const q of questions) {
+    if (!q.title) { blocks.push([]); continue; }
+    blocks[blocks.length - 1].push(q);
+  }
+  const english = blocks[1] || [];
+  const map = {};
+  for (let b = 1; b < blocks.length; b++) {
+    blocks[b].forEach((q, i) => {
+      if (english[i]) map[q.id] = { i: i, q: cleanTitle(english[i].title) };
+    });
+  }
+  return map;
 }
 
 function normalizeHeight(h) {
@@ -196,9 +229,27 @@ export default async function handler(req, res) {
         if (debug) {
           forms.push({ type, questionnaire, formId, submissions: submissions.length, questions: questions.map(q => q.title) });
         }
+        const isStatements = type === "Self-Check" && !questionnaire.startsWith("Quality of Life");
+        const statementMap = isStatements ? buildStatementMap(questions) : {};
+
         for (const s of submissions) {
           if (s.isCompleted === false) continue;
           const f = buildFields(questions, s);
+
+          let answers = [];
+          if (isStatements) {
+            for (const r of (s.responses || [])) {
+              const m = statementMap[r.questionId];
+              const raw = toText(r.answer);
+              if (!m || !raw) continue;
+              answers.push({ i: m.i, q: m.q, a: tr(raw) });
+              if (valuesMode) {
+                const key = "answers: " + questionnaire;
+                values[key] = values[key] || [];
+                if (!values[key].includes(raw)) values[key].push(raw);
+              }
+            }
+          }
 
           if (valuesMode && questionnaire.startsWith("Quality of Life")) {
             for (const key of VALUE_FIELDS) {
@@ -225,7 +276,8 @@ export default async function handler(req, res) {
             anxiety:  hasProblem(f, KEYS.anxiety),
             health:   findNumber(f, KEYS.health),
             weight:   findNumber(f, KEYS.weight),
-            height:   normalizeHeight(findNumber(f, KEYS.height))
+            height:   normalizeHeight(findNumber(f, KEYS.height)),
+            answers
           });
         }
       } catch (e) {
