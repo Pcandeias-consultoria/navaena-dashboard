@@ -609,8 +609,8 @@ function populateFilter(select, values) {
 function populateFilters() {
   const uniqueTypes = Array.from(new Set(RESPONSES.map(function (r) { return r.type; })));
   populateFilter(document.getElementById("type-filter"), uniqueTypes);
-  populateFilter(document.getElementById("workshop-filter"), Array.from(new Set(RESPONSES.map(function (r) { return r.workshop; }))));
-  populateFilter(document.getElementById("country-filter"), Array.from(new Set(RESPONSES.map(function (r) { return r.country; }))));
+  populateFilter(document.getElementById("workshop-filter"), ["Group 1", "Group 2", "Group 3", "Group 4", "Group 5"]);
+  populateFilter(document.getElementById("country-filter"), ["Belgium", "Portugal"]); }))));
   populateFilter(document.getElementById("org-filter"), Array.from(new Set(RESPONSES.map(function (r) { return r.sector; }))));
 }
 
