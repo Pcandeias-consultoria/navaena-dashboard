@@ -79,8 +79,14 @@ const TRANSLATIONS = {
   "strongly agree": "Strongly agree", "tout à fait d'accord": "Strongly agree", "concordo totalmente": "Strongly agree",
   "yes": "Yes", "oui": "Yes", "sim": "Yes",
   "no": "No", "non": "No", "não": "No", "nao": "No",
-  "maybe": "Maybe", "peut-être": "Maybe", "peut-etre": "Maybe", "talvez": "Maybe"
-};
+  "maybe": "Maybe", "peut-être": "Maybe", "peut-etre": "Maybe", "talvez": "Maybe",
+
+  // After today's session, how do you feel?
+  "more informed": "More informed", "mais informada": "More informed", "mais informado": "More informed",
+  "plus informée": "More informed", "plus informé": "More informed", "plus informé(e)": "More informed",
+  "more motivated": "More motivated", "mais motivada": "More motivated", "mais motivado": "More motivated",
+  "plus motivée": "More motivated", "plus motivé": "More motivated", "plus motivé(e)": "More motivated"
+   };
 
 // Perguntas do Feedback, pela ordem em que aparecem em cada língua (a seguir a "Date")
 const FEEDBACK_KEYS = ["date", "facilitator", "energyBefore", "feelAfter", "sessionFelt", "resonated",
