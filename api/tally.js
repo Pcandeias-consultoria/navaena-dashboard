@@ -76,8 +76,21 @@ const TRANSLATIONS = {
   "disagree": "Disagree", "pas d'accord": "Disagree", "discordo": "Disagree",
   "neutral": "Neutral", "neutre": "Neutral", "neutro": "Neutral",
   "agree": "Agree", "d'accord": "Agree", "concordo": "Agree",
-  "strongly agree": "Strongly agree", "tout à fait d'accord": "Strongly agree", "concordo totalmente": "Strongly agree"
+  "strongly agree": "Strongly agree", "tout à fait d'accord": "Strongly agree", "concordo totalmente": "Strongly agree",
+  "yes": "Yes", "oui": "Yes", "sim": "Yes",
+  "no": "No", "non": "No", "não": "No", "nao": "No",
+  "maybe": "Maybe", "peut-être": "Maybe", "peut-etre": "Maybe", "talvez": "Maybe"
 };
+
+// Perguntas do Feedback, pela ordem em que aparecem em cada língua (a seguir a "Date")
+const FEEDBACK_KEYS = ["date", "facilitator", "energyBefore", "feelAfter", "sessionFelt", "resonated",
+  "learn1", "learn2", "capable", "lessAlone", "comfortable", "recommend", "appreciated", "improve"];
+const FEEDBACK_TEXT = ["resonated", "appreciated", "improve"];
+const FEEDBACK_SKIP = ["date", "facilitator"];
+
+// Modelo da Anthropic usado para os resumos
+const SUMMARY_MODEL = "claude-haiku-5-5";
+const summaryCache = new Map();
 
 // País de cada grupo
 const GROUP_COUNTRY = {
@@ -179,9 +192,9 @@ function hasProblem(fields, keys) {
 }
 
 function normalizeGroup(g) {
-     if (!g) return "Unknown";
-     const m = String(g).match(/\d+/);
-     return m ? "Group " + m[0] : String(g).trim();
+  if (!g) return "Unknown";
+  const m = String(g).match(/\d+/);
+  return m ? "Group " + m[0] : String(g).trim();
 }
 
 // Junta as perguntas das 3 línguas: cada pergunta em FR/PT fica com o título da pergunta em inglês
@@ -205,9 +218,150 @@ function buildStatementMap(questions) {
   return map;
 }
 
+function buildFeedbackMap(questions) {
+  const blocks = [[]];
+  for (const q of questions) {
+    if (!q.title) continue;
+    if (/^(date|data)\s*:?\s*$/i.test(cleanTitle(q.title))) blocks.push([]);
+    blocks[blocks.length - 1].push(q);
+  }
+  const english = blocks[1] || [];
+  const map = {};
+  for (let b = 1; b < blocks.length; b++) {
+    blocks[b].forEach((q, i) => {
+      const key = FEEDBACK_KEYS[i];
+      if (key && !FEEDBACK_SKIP.includes(key)) {
+        map[q.id] = { key: key, q: cleanTitle(english[i] ? english[i].title : q.title) };
+      }
+    });
+  }
+  return map;
+}
+
 function normalizeHeight(h) {
   if (h > 3) return Math.round(h) / 100;
   return h;
+}
+
+async function processForm(type, questionnaire, formId, apiKey, opts) {
+  const { questions, submissions } = await getSubmissions(formId, apiKey);
+  if (opts.debug) {
+    opts.forms.push({ type, questionnaire, formId, submissions: submissions.length, questions: questions.map(q => q.title) });
+  }
+  const isStatements = type === "Self-Check" && !questionnaire.startsWith("Quality of Life");
+  const isFeedback = type === "Feedback";
+  const statementMap = isStatements ? buildStatementMap(questions) : {};
+  const feedbackMap = isFeedback ? buildFeedbackMap(questions) : {};
+  const values = opts.values;
+  const VALUE_FIELDS = ["country", "sector", "age", "role", "concern", "mobility", "selfCare", "daily", "pain", "anxiety", "health"];
+  const out = [];
+
+  for (const s of submissions) {
+    if (s.isCompleted === false) continue;
+    const f = buildFields(questions, s);
+
+    const answers = [];
+    if (isStatements) {
+      for (const r of (s.responses || [])) {
+        const m = statementMap[r.questionId];
+        const raw = toText(r.answer);
+        if (!m || !raw) continue;
+        answers.push({ i: m.i, q: m.q, a: tr(raw) });
+        if (opts.valuesMode) {
+          const key = "answers: " + questionnaire;
+          values[key] = values[key] || [];
+          if (!values[key].includes(raw)) values[key].push(raw);
+        }
+      }
+    }
+
+    const fb = {};
+    if (isFeedback) {
+      for (const r of (s.responses || [])) {
+        const m = feedbackMap[r.questionId];
+        const raw = toText(r.answer);
+        if (!m || !raw) continue;
+        const isText = FEEDBACK_TEXT.includes(m.key);
+        if (isText && !opts.withText) continue;
+        fb[m.key] = { q: m.q, a: isText ? raw : tr(raw) };
+        if (opts.valuesMode && !isText) {
+          const key = "feedback: " + m.key;
+          values[key] = values[key] || [];
+          if (!values[key].includes(raw)) values[key].push(raw);
+        }
+      }
+    }
+
+    if (opts.valuesMode && questionnaire.startsWith("Quality of Life")) {
+      for (const key of VALUE_FIELDS) {
+        const v = findText(f, KEYS[key]);
+        if (!v) continue;
+        values[key] = values[key] || [];
+        if (!values[key].includes(v)) values[key].push(v);
+      }
+    }
+
+    const group = normalizeGroup(findText(f, KEYS.group));
+    out.push({
+      type,
+      questionnaire,
+      workshop: group,
+      country:  GROUP_COUNTRY[group] || "Unknown",
+      sector:   GROUP_SECTOR[group] || "Unknown",
+      age:      tr(findText(f, KEYS.age)) || "Unknown",
+      role:     tr(findText(f, KEYS.role)) || "Unknown",
+      concern:  tr(findText(f, KEYS.concern)) || "Unknown",
+      mobility: hasProblem(f, KEYS.mobility),
+      selfCare: hasProblem(f, KEYS.selfCare),
+      daily:    hasProblem(f, KEYS.daily),
+      pain:     hasProblem(f, KEYS.pain),
+      anxiety:  hasProblem(f, KEYS.anxiety),
+      health:   findNumber(f, KEYS.health),
+      weight:   findNumber(f, KEYS.weight),
+      height:   normalizeHeight(findNumber(f, KEYS.height)),
+      answers,
+      fb
+    });
+  }
+  return out;
+}
+
+// Resumo em inglês dos comentários abertos do Feedback (feito pelo Claude)
+async function summarize(texts) {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) return { available: false };
+
+  const section = (title, list) => title + ":\n" + (list.length ? list.map(t => "- " + t.slice(0, 800)).join("\n") : "(no comments)");
+  const prompt =
+    "You are summarising anonymous participant feedback from a women's health and longevity programme session. " +
+    "Comments may be written in English, French or Portuguese.\n\n" +
+    "For each of the three groups of comments below, write 2 to 5 short bullet points in English with the main insights or recurring themes. " +
+    "Do not quote people word for word, do not include names, and do not invent anything that is not in the comments. " +
+    "If a group has no comments, return an empty list for it.\n\n" +
+    "Reply ONLY with JSON in this exact format: {\"resonated\": [\"...\"], \"appreciated\": [\"...\"], \"improve\": [\"...\"]}\n\n" +
+    section("RESONATED (What resonated most / biggest insight)", texts.resonated) + "\n\n" +
+    section("APPRECIATED (What did you appreciate most)", texts.appreciated) + "\n\n" +
+    section("IMPROVE (What could be improved)", texts.improve);
+
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": anthropicKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ model: SUMMARY_MODEL, max_tokens: 1000, messages: [{ role: "user", content: prompt }] })
+  });
+  if (!r.ok) throw new Error("a API do Claude respondeu com o erro " + r.status);
+  const data = await r.json();
+  const text = ((data.content || []).find(c => c.type === "text") || {}).text || "";
+  const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  return {
+    available: true,
+    resonated: json.resonated || [],
+    appreciated: json.appreciated || [],
+    improve: json.improve || []
+  };
 }
 
 export default async function handler(req, res) {
@@ -217,76 +371,51 @@ export default async function handler(req, res) {
     return res.status(500).json({ responses: [], errors: ["A variável TALLY_API_KEY não está configurada no Vercel"] });
   }
 
-  const debug = req.query && req.query.debug === "1";
-  const valuesMode = req.query && req.query.values === "1";
-  const responses = [], errors = [], forms = [];
-  const values = {};
-  const VALUE_FIELDS = ["country", "sector", "age", "role", "concern", "mobility", "selfCare", "daily", "pain", "anxiety", "health"];
+  const query = req.query || {};
+
+  // Modo resumo: /api/tally?summary=1&questionnaire=Eat&workshop=all&country=all&sector=all
+  if (query.summary === "1") {
+    try {
+      const questionnaire = String(query.questionnaire || "");
+      const formId = TALLY_FORMS.Feedback[questionnaire];
+      if (!formId) return res.status(400).json({ error: "Questionário desconhecido" });
+      const rows = (await processForm("Feedback", questionnaire, formId, apiKey, { withText: true, values: {} }))
+        .filter(r =>
+          (!query.workshop || query.workshop === "all" || r.workshop === query.workshop) &&
+          (!query.country || query.country === "all" || r.country === query.country) &&
+          (!query.sector || query.sector === "all" || r.sector === query.sector));
+      const texts = { resonated: [], appreciated: [], improve: [] };
+      rows.forEach(r => FEEDBACK_TEXT.forEach(k => { if (r.fb[k]) texts[k].push(r.fb[k].a); }));
+      const cacheKey = JSON.stringify(texts);
+      if (summaryCache.has(cacheKey)) return res.status(200).json(summaryCache.get(cacheKey));
+      const result = await summarize(texts);
+      if (result.available) summaryCache.set(cacheKey, result);
+      return res.status(200).json(result);
+    } catch (e) {
+      return res.status(200).json({ available: false, error: e.message });
+    }
+  }
+
+  const opts = {
+    debug: query.debug === "1",
+    valuesMode: query.values === "1",
+    values: {},
+    forms: [],
+    withText: false
+  };
+  let responses = [];
+  const errors = [];
 
   for (const [type, questionnaires] of Object.entries(TALLY_FORMS)) {
     for (const [questionnaire, formId] of Object.entries(questionnaires)) {
       try {
-        const { questions, submissions } = await getSubmissions(formId, apiKey);
-        if (debug) {
-          forms.push({ type, questionnaire, formId, submissions: submissions.length, questions: questions.map(q => q.title) });
-        }
-        const isStatements = type === "Self-Check" && !questionnaire.startsWith("Quality of Life");
-        const statementMap = isStatements ? buildStatementMap(questions) : {};
-
-        for (const s of submissions) {
-          if (s.isCompleted === false) continue;
-          const f = buildFields(questions, s);
-
-          let answers = [];
-          if (isStatements) {
-            for (const r of (s.responses || [])) {
-              const m = statementMap[r.questionId];
-              const raw = toText(r.answer);
-              if (!m || !raw) continue;
-              answers.push({ i: m.i, q: m.q, a: tr(raw) });
-              if (valuesMode) {
-                const key = "answers: " + questionnaire;
-                values[key] = values[key] || [];
-                if (!values[key].includes(raw)) values[key].push(raw);
-              }
-            }
-          }
-
-          if (valuesMode && questionnaire.startsWith("Quality of Life")) {
-            for (const key of VALUE_FIELDS) {
-              const v = findText(f, KEYS[key]);
-              if (!v) continue;
-              values[key] = values[key] || [];
-              if (!values[key].includes(v)) values[key].push(v);
-            }
-          }
-
-          responses.push({
-            type,
-            questionnaire,
-            workshop: normalizeGroup(findText(f, KEYS.group)),
-            country:  GROUP_COUNTRY[normalizeGroup(findText(f, KEYS.group))] || "Unknown",
-            sector:   GROUP_SECTOR[normalizeGroup(findText(f, KEYS.group))] || "Unknown",
-            age:      tr(findText(f, KEYS.age)) || "Unknown",
-            role:     tr(findText(f, KEYS.role)) || "Unknown",
-            concern:  tr(findText(f, KEYS.concern)) || "Unknown",
-            mobility: hasProblem(f, KEYS.mobility),
-            selfCare: hasProblem(f, KEYS.selfCare),
-            daily:    hasProblem(f, KEYS.daily),
-            pain:     hasProblem(f, KEYS.pain),
-            anxiety:  hasProblem(f, KEYS.anxiety),
-            health:   findNumber(f, KEYS.health),
-            weight:   findNumber(f, KEYS.weight),
-            height:   normalizeHeight(findNumber(f, KEYS.height)),
-            answers
-          });
-        }
+        responses = responses.concat(await processForm(type, questionnaire, formId, apiKey, opts));
       } catch (e) {
         errors.push(`${type} / ${questionnaire}: ${e.message}`);
       }
     }
   }
 
-  if (valuesMode) return res.status(200).json({ errors, values });
-  res.status(200).json(debug ? { errors, forms } : { responses, errors });
+  if (opts.valuesMode) return res.status(200).json({ errors, values: opts.values });
+  res.status(200).json(opts.debug ? { errors, forms: opts.forms } : { responses, errors });
 }
