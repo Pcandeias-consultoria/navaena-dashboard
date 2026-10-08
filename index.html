@@ -755,7 +755,7 @@ const summaryCacheClient = {};
 let feedbackRenderId = 0;
 
 function answerColors(keys) {
-  const fixed = { "Yes": "var(--accent)", "No": "var(--warm)", "Maybe": "var(--sky)" };
+  const fixed = { "Yes": "var(--accent)", "No": "var(--warm)", "Maybe": "var(--sky)", "More informed": "var(--teal)", "More motivated": "var(--accent)" };
   return keys.map(function (label, k) {
     if (fixed[label]) return fixed[label];
     const num = parseInt(label, 10);
