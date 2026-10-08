@@ -742,11 +742,9 @@ function renderStatements(rows) {
 // ---------- Feedback ----------
 const FEEDBACK_SECTIONS = [
   { title: "Quick Energy Check-in", items: ["energyBefore", "feelAfter"] },
-  { title: "Session Experience", items: ["sessionFelt", "summary:resonated"] },
   { title: "From Information to Transformation", items: ["learn1", "learn2"] },
   { title: "Behavioral Confidence", items: ["capable"] },
-  { title: "Community & Connection", items: ["lessAlone", "comfortable"] },
-  { title: "Recommendation & Feedback", items: ["summary:appreciated", "summary:improve"] }
+  { title: "Community & Connection", items: ["lessAlone", "comfortable"] }
 ];
 const SUMMARY_TITLES = {
   resonated: "What resonated most? Key insights",
@@ -828,8 +826,7 @@ function renderFeedback(rows, questionnaire, workshop, country, sector) {
     renderPie(document.getElementById(p.id), slices, answerColors(keys));
   });
 
-  loadSummaries(questionnaire, workshop, country, sector, rows.length);
-}
+  }
 
 function showSummaries(data) {
   ["resonated", "appreciated", "improve"].forEach(function (key) {
