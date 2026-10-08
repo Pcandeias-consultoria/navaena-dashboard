@@ -714,12 +714,16 @@ function renderStatements(rows) {
         if (a.q === q.q) counts[a.a] = (counts[a.a] || 0) + 1;
       });
     });
-    const slices = sortAnswers(Object.keys(counts)).map(function (label) {
-      return { label: label, value: counts[label] };
+        const SCALE_LABELS = { "1": "1 – Rarely / Never", "5": "5 – Always / Very good" };
+    const keys = sortAnswers(Object.keys(counts));
+    const colors = keys.map(function (label, k) {
+      const num = parseInt(label, 10);
+      const pos = ANSWER_ORDER.indexOf(label);
+      const idx = (!isNaN(num) && String(num) === label) ? num - 1 : (pos >= 0 ? pos : k);
+      return ANSWER_COLORS[idx % ANSWER_COLORS.length];
     });
-    const colors = slices.map(function (s, k) {
-      const pos = ANSWER_ORDER.indexOf(s.label);
-      return ANSWER_COLORS[(pos >= 0 ? pos : k) % ANSWER_COLORS.length];
+    const slices = keys.map(function (label) {
+      return { label: SCALE_LABELS[label] || label, value: counts[label] };
     });
     renderPie(document.getElementById("st-chart-" + n), slices, colors);
   });
