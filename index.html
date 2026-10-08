@@ -459,7 +459,23 @@ footer {
         <div class="stat-label">Submissions</div>
       </div>
     </div>
+    <p class="subtitle" style="text-align: center; margin-bottom: 2rem;">Each question was answered on a scale from 1 to 5, where 1 means "rarely / never" and 5 means "always / very good".</p>
     <div class="charts-section" id="statements-charts"></div>
+  </div>
+
+  <div id="feedback-area" class="content-hidden">
+    <div class="stats-grid" style="max-width: 560px; margin-left: auto; margin-right: auto;">
+      <div class="stat-tile">
+        <div class="stat-value" id="fb-count">–</div>
+        <div class="stat-label">Submissions</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-value" id="fb-recommend">–</div>
+        <div class="stat-label">Recommendation</div>
+        <div class="stat-interpretation" id="fb-recommend-note"></div>
+      </div>
+    </div>
+    <div id="feedback-sections"></div>
   </div>
 
   <div id="empty-state" class="empty-state content-hidden">
@@ -629,15 +645,9 @@ function populateFilters() {
 function isAllFiltersSelected() {
   const type = document.getElementById("type-filter").value;
   const questionnaire = document.getElementById("questionnaire-filter").value;
-  const workshop = document.getElementById("workshop-filter").value;
-  const country = document.getElementById("country-filter").value;
-  const sector = document.getElementById("org-filter").value;
 
   const hasType = type !== "all";
   const hasQuestionnaire = questionnaire !== "all";
-  const hasWorkshop = workshop !== "all";
-  const hasCountry = country !== "all";
-  const hasSector = sector !== "all";
 
   if (!hasType || !hasQuestionnaire) {
     return false;
@@ -714,7 +724,7 @@ function renderStatements(rows) {
         if (a.q === q.q) counts[a.a] = (counts[a.a] || 0) + 1;
       });
     });
-        const SCALE_LABELS = { "1": "1 – Rarely / Never", "5": "5 – Always / Very good" };
+    const SCALE_LABELS = { "1": "1 – Rarely / Never", "5": "5 – Always / Very good" };
     const keys = sortAnswers(Object.keys(counts));
     const colors = keys.map(function (label, k) {
       const num = parseInt(label, 10);
@@ -729,8 +739,133 @@ function renderStatements(rows) {
   });
 }
 
+// ---------- Feedback ----------
+const FEEDBACK_SECTIONS = [
+  { title: "Quick Energy Check-in", items: ["energyBefore", "feelAfter"] },
+  { title: "Session Experience", items: ["sessionFelt", "summary:resonated"] },
+  { title: "From Information to Transformation", items: ["learn1", "learn2"] },
+  { title: "Behavioral Confidence", items: ["capable"] },
+  { title: "Community & Connection", items: ["lessAlone", "comfortable"] },
+  { title: "Recommendation & Feedback", items: ["summary:appreciated", "summary:improve"] }
+];
+const SUMMARY_TITLES = {
+  resonated: "What resonated most? Key insights",
+  appreciated: "What did you appreciate most? Key insights",
+  improve: "What could be improved? Key insights"
+};
+const summaryCacheClient = {};
+let feedbackRenderId = 0;
+
+function answerColors(keys) {
+  const fixed = { "Yes": "var(--accent)", "No": "var(--warm)", "Maybe": "var(--sky)" };
+  return keys.map(function (label, k) {
+    if (fixed[label]) return fixed[label];
+    const num = parseInt(label, 10);
+    const pos = ANSWER_ORDER.indexOf(label);
+    const idx = (!isNaN(num) && String(num) === label) ? num - 1 : (pos >= 0 ? pos : k);
+    return ANSWER_COLORS[idx % ANSWER_COLORS.length];
+  });
+}
+
+function renderRecommendation(rows) {
+  const values = rows.map(function (r) { return r.fb && r.fb.recommend ? r.fb.recommend.a : null; })
+    .filter(function (v) { return v !== null && v !== ""; });
+  const valueEl = document.getElementById("fb-recommend");
+  const noteEl = document.getElementById("fb-recommend-note");
+  if (!values.length) { valueEl.textContent = "–"; noteEl.textContent = ""; return; }
+  const nums = values.map(function (v) { return parseFloat(String(v).replace(",", ".")); });
+  if (nums.every(function (n) { return !isNaN(n); })) {
+    const avg = nums.reduce(function (a, b) { return a + b; }, 0) / nums.length;
+    valueEl.textContent = comma(avg, 1);
+    noteEl.textContent = "Average score";
+  } else {
+    const yes = values.filter(function (v) { return v === "Yes"; }).length;
+    valueEl.textContent = Math.round(yes / values.length * 100) + "%";
+    noteEl.textContent = "Would recommend";
+  }
+}
+
+function renderFeedback(rows, questionnaire, workshop, country, sector) {
+  document.getElementById("fb-count").textContent = rows.length;
+  renderRecommendation(rows);
+
+  const sectionsEl = document.getElementById("feedback-sections");
+  let html = "";
+  const pies = [];
+
+  FEEDBACK_SECTIONS.forEach(function (section, si) {
+    html += '<h2 style="font-size: 1.2rem; font-weight: 600; color: var(--ink-brand); margin: 2.5rem 0 1rem 0;">' + section.title + '</h2>';
+    html += '<div class="charts-section">';
+    section.items.forEach(function (item, ii) {
+      if (item.indexOf("summary:") === 0) {
+        const key = item.slice(8);
+        html += '<div class="chart-container">' +
+          '<h3 class="chart-title">' + SUMMARY_TITLES[key] + '</h3>' +
+          '<div id="fb-sum-' + key + '" style="font-size: 0.95rem; color: var(--text-primary);"><p class="subtitle">Generating summary…</p></div>' +
+          '</div>';
+      } else {
+        const first = rows.find(function (r) { return r.fb && r.fb[item]; });
+        const title = first ? first.fb[item].q : item;
+        const id = "fb-chart-" + si + "-" + ii;
+        html += '<div class="chart-container">' +
+          '<h3 class="chart-title">' + escapeHtml(title) + '</h3>' +
+          '<div class="pie-card" id="' + id + '"></div>' +
+          '</div>';
+        pies.push({ id: id, key: item });
+      }
+    });
+    html += '</div>';
+  });
+  sectionsEl.innerHTML = html;
+
+  pies.forEach(function (p) {
+    const counts = {};
+    rows.forEach(function (r) {
+      if (r.fb && r.fb[p.key]) counts[r.fb[p.key].a] = (counts[r.fb[p.key].a] || 0) + 1;
+    });
+    const keys = sortAnswers(Object.keys(counts));
+    const slices = keys.map(function (label) { return { label: escapeHtml(label), value: counts[label] }; });
+    renderPie(document.getElementById(p.id), slices, answerColors(keys));
+  });
+
+  loadSummaries(questionnaire, workshop, country, sector, rows.length);
+}
+
+function showSummaries(data) {
+  ["resonated", "appreciated", "improve"].forEach(function (key) {
+    const el = document.getElementById("fb-sum-" + key);
+    if (!el) return;
+    if (!data || !data.available) {
+      el.innerHTML = '<p class="subtitle">Summary not available.</p>';
+      return;
+    }
+    const items = data[key] || [];
+    el.innerHTML = items.length
+      ? '<ul style="margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem;">' +
+        items.map(function (t) { return '<li>' + escapeHtml(t) + '</li>'; }).join("") + '</ul>'
+      : '<p class="subtitle">No comments yet.</p>';
+  });
+}
+
+function loadSummaries(questionnaire, workshop, country, sector, count) {
+  const myId = ++feedbackRenderId;
+  if (!count) { showSummaries({ available: true, resonated: [], appreciated: [], improve: [] }); return; }
+  const params = "summary=1&questionnaire=" + encodeURIComponent(questionnaire) +
+    "&workshop=" + encodeURIComponent(workshop) +
+    "&country=" + encodeURIComponent(country) +
+    "&sector=" + encodeURIComponent(sector);
+  if (summaryCacheClient[params]) { showSummaries(summaryCacheClient[params]); return; }
+  fetch("/api/tally?" + params)
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data && data.available) summaryCacheClient[params] = data;
+      if (myId === feedbackRenderId) showSummaries(data);
+    })
+    .catch(function () { if (myId === feedbackRenderId) showSummaries(null); });
+}
+
 function showArea(id) {
-  ["content-area", "statements-area", "empty-state"].forEach(function (a) {
+  ["content-area", "statements-area", "feedback-area", "empty-state"].forEach(function (a) {
     const el = document.getElementById(a);
     if (a === id) {
       el.classList.remove("content-hidden");
@@ -763,6 +898,12 @@ function render() {
   });
 
   document.getElementById("footer-note").textContent = "Updated: " + new Date().toLocaleString("en-GB");
+
+  if (type === "Feedback") {
+    showArea("feedback-area");
+    renderFeedback(rows, questionnaire, workshop, country, sector);
+    return;
+  }
 
   if (type === "Self-Check" && questionnaire.indexOf("Quality of Life") !== 0) {
     showArea("statements-area");
